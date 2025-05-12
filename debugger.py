@@ -60,6 +60,7 @@ class MyDebugger:
 
         # Clear the screen
         print("\033c", end="")
+        print("\033[?25l", end="", flush=True)  # Hide cursor
 
         with open(self.filename) as f:
             lines = f.readlines()
@@ -85,6 +86,7 @@ class MyDebugger:
         # Fill any remaining space with blank lines so the prompt is always at the bottom
         for _ in range(lines_to_show - len(visible_lines)):
             print()
+        print("\033[?25h", end="", flush=True)  # Show cursor
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
