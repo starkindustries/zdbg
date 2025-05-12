@@ -18,8 +18,12 @@ def main(stdscr):
         input_win.clear()
         input_win.addstr(0, 0, "> ")
         input_win.refresh()
+
+        # This turns on echoing, so when the user types their command, the characters they type are visible in the input window.
         curses.echo()
+        # This reads a string from the user. Because echo is on, the user can see what they are typing.
         cmd = input_win.getstr(0, 2, width-3).decode('utf-8')
+        # This turns echoing back off after the input is read, so that any further input (if any) will not be automatically displayed.
         curses.noecho()
 
         if cmd.strip() == "quit":
