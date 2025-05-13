@@ -19,6 +19,11 @@ class MyDebugger:
         if frame.f_code.co_filename != self.filename:
             return self.trace_calls
         lineno = frame.f_lineno
+        print("Local variables:")
+        for var, value in frame.f_locals.items():
+            if not var.startswith('__'):
+                print(f"  {var} = {value!r}")
+        input()
         while True:
             self.render_file(lineno)
             cmd = input('> ').strip().lower()
@@ -74,13 +79,13 @@ class MyDebugger:
         console = Console()
         for idx, line in enumerate(visible_lines, start=start_line+1):
             line = line.rstrip('\n')
+            # add extra padding if index is less than 10, i.e. less than 2 digits
+            if idx < 10:
+                line = " " + line
             if idx == highlight_lineno:
-                # Highlight the current line (with >>)
                 syntax = Syntax("  " + line[:width-8], "python", theme="lightbulb", line_numbers=True, start_line=idx)
-                # print(f">> {str(idx).rjust(3)}: {line_content[:width-8]}")
             else:
                 syntax = Syntax("  " + line[:width-8], "python", theme="github-dark", line_numbers=True, start_line=idx)
-                # print(f"   {str(idx).rjust(3)}: {line_content[:width-8]}")
             console.print(syntax)
 
         # Fill any remaining space with blank lines so the prompt is always at the bottom
