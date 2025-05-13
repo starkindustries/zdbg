@@ -62,9 +62,9 @@ class MyDebugger:
         exec(compile(code, self.filename, 'exec'), globals_dict)
         sys.settrace(None)
 
-    def print_with_rich_syntax(self, line, highlight=False):
+    def print_with_rich_syntax(self, line, start_line, highlight=False):
         theme = "lightbulb" if highlight else "github-dark"
-        syntax = Syntax(line, "python", theme=theme, line_numbers=True)
+        syntax = Syntax(line, "python", theme=theme, line_numbers=True, start_line=start_line)
         console = Console()
         console.print(syntax)
 
@@ -112,15 +112,15 @@ class MyDebugger:
                 line_pos = idx - start_line
                 print(f"\033[{line_pos}H", end="")
                 if idx == highlight_lineno:
-                    self.print_with_rich_syntax(line, highlight=True)
+                    self.print_with_rich_syntax(line, idx, highlight=True)
                 else:
-                    self.print_with_rich_syntax(line, highlight=False)
+                    self.print_with_rich_syntax(line, idx, highlight=False)
             elif self.last_highlight_lineno is None:
                 # On first render, print all lines
                 if idx == highlight_lineno:
-                    self.print_with_rich_syntax(line, highlight=True)
+                    self.print_with_rich_syntax(line, idx, highlight=True)
                 else:
-                    self.print_with_rich_syntax(line, highlight=False)
+                    self.print_with_rich_syntax(line, idx, highlight=False)
 
         # Print local variables immediately after the code
         # Move cursor to the line after the last code line
