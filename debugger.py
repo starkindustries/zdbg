@@ -13,6 +13,7 @@ class MyDebugger:
         self._wait_for_input = True
         self.last_command = None
         self.last_highlight_lineno = None
+        self.auto_step_count = int(os.environ.get('DEBUGGER_AUTO_STEP', '0'))
 
     def print_message_at_bottom(self, message):
         size = os.get_terminal_size()
@@ -33,6 +34,10 @@ class MyDebugger:
         while True:
             self.render_file(lineno, frame.f_locals)
             self.last_highlight_lineno = lineno
+            if self.auto_step_count > 0:
+                self.auto_step_count -= 1
+                self.last_command = 'step'
+                break
             cmd = input('> ').strip().lower()
 
             if cmd == '':
@@ -43,9 +48,11 @@ class MyDebugger:
                 break
             elif cmd == 'back':
                 print('Restarting program...', end='')
-                # Clear state and restart
+                # Clear state and restart with auto-step
                 sys.settrace(None)
-                os.execv(sys.executable, [sys.executable] + sys.argv)
+                new_env = os.environ.copy()
+                new_env['DEBUGGER_AUTO_STEP'] = '10'
+                os.execve(sys.executable, [sys.executable] + sys.argv, new_env)
             elif cmd == 'quit':
                 self.last_command = 'quit'
                 print('Exiting debugger.')
