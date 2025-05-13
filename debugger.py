@@ -14,6 +14,16 @@ class MyDebugger:
         self.last_command = None
         self.last_highlight_lineno = None
 
+    def print_message_at_bottom(self, message):
+        size = os.get_terminal_size()
+        height, width = size.lines, size.columns
+        # Move cursor to the last line
+        print(f"\033[{height};1H", end="")
+        # Clear the line
+        print(" " * width, end="")
+        # Move cursor back to the start and print the message
+        print(f"\033[{height};1H{message}", end="", flush=True)
+
     def trace_calls(self, frame, event, arg):
         if event != 'line':
             return self.trace_calls
@@ -36,7 +46,7 @@ class MyDebugger:
                 print('Exiting debugger.')
                 sys.exit(0)
             else:
-                print('Unknown command. Type step or quit.')
+                self.print_message_at_bottom('Unknown command. Type step or quit.')
         return self.trace_calls
 
     def get_line(self, lineno):
@@ -51,6 +61,12 @@ class MyDebugger:
         globals_dict = {'__name__': '__main__'}
         exec(compile(code, self.filename, 'exec'), globals_dict)
         sys.settrace(None)
+
+    def print_with_rich_syntax(self, line, highlight=False):
+        theme = "lightbulb" if highlight else "github-dark"
+        syntax = Syntax(line, "python", theme=theme, line_numbers=True)
+        console = Console()
+        console.print(syntax)
 
     def render_file(self, highlight_lineno, locals_dict=None):
         # Get terminal size
@@ -96,17 +112,15 @@ class MyDebugger:
                 line_pos = idx - start_line
                 print(f"\033[{line_pos}H", end="")
                 if idx == highlight_lineno:
-                    syntax = Syntax("  " + line[:width-8], "python", theme="lightbulb", line_numbers=True, start_line=idx)
+                    self.print_with_rich_syntax(line, highlight=True)
                 else:
-                    syntax = Syntax("  " + line[:width-8], "python", theme="github-dark", line_numbers=True, start_line=idx)
-                console.print(syntax, end="")
+                    self.print_with_rich_syntax(line, highlight=False)
             elif self.last_highlight_lineno is None:
                 # On first render, print all lines
                 if idx == highlight_lineno:
-                    syntax = Syntax("  " + line[:width-8], "python", theme="lightbulb", line_numbers=True, start_line=idx)
+                    self.print_with_rich_syntax(line, highlight=True)
                 else:
-                    syntax = Syntax("  " + line[:width-8], "python", theme="github-dark", line_numbers=True, start_line=idx)
-                console.print(syntax)
+                    self.print_with_rich_syntax(line, highlight=False)
 
         # Print local variables immediately after the code
         # Move cursor to the line after the last code line
