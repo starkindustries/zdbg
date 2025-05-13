@@ -15,7 +15,7 @@ class Solution:
                     break
         return "".join(conversion)
 
-s = "PAYPALISHIRING"
+s = "6_LEETCODE_ZIGZAG_CONVERSION"
 solve = Solution()
 result = solve.convert(s, 4)
 print(result)

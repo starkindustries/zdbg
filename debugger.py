@@ -19,13 +19,8 @@ class MyDebugger:
         if frame.f_code.co_filename != self.filename:
             return self.trace_calls
         lineno = frame.f_lineno
-        print("Local variables:")
-        for var, value in frame.f_locals.items():
-            if not var.startswith('__'):
-                print(f"  {var} = {value!r}")
-        input()
         while True:
-            self.render_file(lineno)
+            self.render_file(lineno, frame.f_locals)
             cmd = input('> ').strip().lower()
 
             if cmd == '':
@@ -55,7 +50,7 @@ class MyDebugger:
         exec(compile(code, self.filename, 'exec'), globals_dict)
         sys.settrace(None)
 
-    def render_file(self, highlight_lineno):
+    def render_file(self, highlight_lineno, locals_dict=None):
         # Get terminal size
         try:
             size = os.get_terminal_size()
@@ -88,8 +83,19 @@ class MyDebugger:
                 syntax = Syntax("  " + line[:width-8], "python", theme="github-dark", line_numbers=True, start_line=idx)
             console.print(syntax)
 
+        # Print local variables immediately after the code
+        var_lines = 0
+        if locals_dict:
+            print("\nLocal variables:")
+            print("=================")
+            var_lines += 3
+            for var, value in locals_dict.items():
+                if not var.startswith('__'):
+                    print(f"{var} = {value!r}")
+                    var_lines += 1
+
         # Fill any remaining space with blank lines so the prompt is always at the bottom
-        for _ in range(lines_to_show - len(visible_lines)):
+        for _ in range((lines_to_show - len(visible_lines)) - var_lines):
             print()
         print("\033[?25h", end="", flush=True)  # Show cursor
 
