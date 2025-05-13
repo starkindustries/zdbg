@@ -41,12 +41,17 @@ class MyDebugger:
             if cmd in ['step', 's']:
                 self.last_command = 'step'
                 break
+            elif cmd == 'back':
+                print('Restarting program...', end='')
+                # Clear state and restart
+                sys.settrace(None)
+                os.execv(sys.executable, [sys.executable] + sys.argv)
             elif cmd == 'quit':
                 self.last_command = 'quit'
                 print('Exiting debugger.')
                 sys.exit(0)
             else:
-                self.print_message_at_bottom('Unknown command. Type step or quit.')
+                self.print_message_at_bottom('Unknown command. Type step, back or quit.')
         return self.trace_calls
 
     def get_line(self, lineno):
