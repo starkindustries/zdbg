@@ -95,7 +95,7 @@ class MyDebugger:
                     var_lines += 1
 
         # Fill any remaining space with blank lines so the prompt is always at the bottom
-        for _ in range((lines_to_show - len(visible_lines)) - var_lines):
+        for _ in range((lines_to_show - len(visible_lines)) - var_lines - 1):
             print()
         print("\033[?25h", end="", flush=True)  # Show cursor
 
