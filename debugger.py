@@ -12,7 +12,8 @@ class MyDebugger:
         self.filename = filename
         self._wait_for_input = True
         self.last_command = None
-        self.last_highlight_lineno = None
+        last_highlight_env = os.environ.get('DEBUGGER_LAST_HIGHLIGHT')
+        self.last_highlight_lineno = int(last_highlight_env) if last_highlight_env is not None else None
         self.auto_step_count = int(os.environ.get('DEBUGGER_AUTO_STEP', '0'))
         self.step_count = int(os.environ.get('DEBUGGER_STEP_COUNT', '0'))
 
@@ -50,13 +51,18 @@ class MyDebugger:
                 self.last_command = 'step'
                 self.step_count += 1
                 break
-            elif cmd == 'back':
+            elif cmd in ['back', 'b']:
+                self.last_command = 'back'
                 print('Restarting program...', end='')
                 # Clear state and restart with auto-step
                 sys.settrace(None)
                 new_env = os.environ.copy()
                 new_env['DEBUGGER_AUTO_STEP'] = str(max(self.step_count - 1, 0))
                 new_env['DEBUGGER_STEP_COUNT'] = '0'
+                if self.last_highlight_lineno is not None:
+                    new_env['DEBUGGER_LAST_HIGHLIGHT'] = str(self.last_highlight_lineno)
+                elif 'DEBUGGER_LAST_HIGHLIGHT' in new_env:
+                    del new_env['DEBUGGER_LAST_HIGHLIGHT']
                 os.execve(sys.executable, [sys.executable] + sys.argv, new_env)
             elif cmd == 'quit':
                 self.last_command = 'quit'
@@ -93,7 +99,7 @@ class MyDebugger:
         except OSError:
             height, width = 24, 80
 
-        # Only clear the screen on the first render
+        # Only clear the screen on the first render (or if last_highlight_lineno is None)
         if self.last_highlight_lineno is None:
             print("\033c", end="")
         print("\033[?25l", end="", flush=True)  # Hide cursor
