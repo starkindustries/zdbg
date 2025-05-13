@@ -12,6 +12,7 @@ class MyDebugger:
         self.filename = filename
         self._wait_for_input = True
         self.last_command = None
+        self.last_highlight_lineno = None
 
     def trace_calls(self, frame, event, arg):
         if event != 'line':
@@ -21,6 +22,7 @@ class MyDebugger:
         lineno = frame.f_lineno
         while True:
             self.render_file(lineno, frame.f_locals)
+            self.last_highlight_lineno = lineno
             cmd = input('> ').strip().lower()
 
             if cmd == '':
@@ -58,8 +60,9 @@ class MyDebugger:
         except OSError:
             height, width = 24, 80
 
-        # Clear the screen
-        print("\033c", end="")
+        # Only clear the screen on the first render
+        if self.last_highlight_lineno is None:
+            print("\033c", end="")
         print("\033[?25l", end="", flush=True)  # Hide cursor
 
         with open(self.filename) as f:
@@ -72,18 +75,42 @@ class MyDebugger:
         visible_lines = lines[start_line:end_line]
 
         console = Console()
+        # Only redraw the previously highlighted line and the new highlighted line
+        # Calculate their positions in visible_lines
+        lines_to_update = set()
+        if self.last_highlight_lineno is not None:
+            if start_line + 1 <= self.last_highlight_lineno <= end_line:
+                lines_to_update.add(self.last_highlight_lineno)
+        if start_line + 1 <= highlight_lineno <= end_line:
+            lines_to_update.add(highlight_lineno)
+
+        # Move cursor to the top of the code area
+        print(f"\033[{1}H", end="")
         for idx, line in enumerate(visible_lines, start=start_line+1):
             line = line.rstrip('\n')
             # add extra padding if index is less than 10, i.e. less than 2 digits
             if idx < 10:
                 line = " " + line
-            if idx == highlight_lineno:
-                syntax = Syntax("  " + line[:width-8], "python", theme="lightbulb", line_numbers=True, start_line=idx)
-            else:
-                syntax = Syntax("  " + line[:width-8], "python", theme="github-dark", line_numbers=True, start_line=idx)
-            console.print(syntax)
+            if idx in lines_to_update or self.last_highlight_lineno is None:
+                # Move cursor to the correct line
+                line_pos = idx - start_line
+                print(f"\033[{line_pos}H", end="")
+                if idx == highlight_lineno:
+                    syntax = Syntax("  " + line[:width-8], "python", theme="lightbulb", line_numbers=True, start_line=idx)
+                else:
+                    syntax = Syntax("  " + line[:width-8], "python", theme="github-dark", line_numbers=True, start_line=idx)
+                console.print(syntax, end="")
+            elif self.last_highlight_lineno is None:
+                # On first render, print all lines
+                if idx == highlight_lineno:
+                    syntax = Syntax("  " + line[:width-8], "python", theme="lightbulb", line_numbers=True, start_line=idx)
+                else:
+                    syntax = Syntax("  " + line[:width-8], "python", theme="github-dark", line_numbers=True, start_line=idx)
+                console.print(syntax)
 
         # Print local variables immediately after the code
+        # Move cursor to the line after the last code line
+        print(f"\033[{len(visible_lines) + 1}H", end="")
         var_lines = 0
         if locals_dict:
             print("\nLocal variables:")

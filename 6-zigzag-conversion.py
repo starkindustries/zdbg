@@ -3,7 +3,6 @@
 class Solution:
     def convert(self, s: str, numRows: int) -> str:
         conversion = [""] * numRows
-        print(conversion)
         idx = 0
         # Ex: numRows 4: 0 1 2 3 2 1 repeat
         idx_sequence = list(range(numRows)) + list(range(numRows-2, 0, -1))
