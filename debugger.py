@@ -14,6 +14,7 @@ class MyDebugger:
         self.last_command = None
         self.last_highlight_lineno = None
         self.auto_step_count = int(os.environ.get('DEBUGGER_AUTO_STEP', '0'))
+        self.step_count = int(os.environ.get('DEBUGGER_STEP_COUNT', '0'))
 
     def print_message_at_bottom(self, message):
         size = os.get_terminal_size()
@@ -34,17 +35,20 @@ class MyDebugger:
         while True:
             self.render_file(lineno, frame.f_locals)
             self.last_highlight_lineno = lineno
+            stepped = False
             if self.auto_step_count > 0:
                 self.auto_step_count -= 1
                 self.last_command = 'step'
+                stepped = True
                 break
-            cmd = input('> ').strip().lower()
+            cmd = input(f'[step {self.step_count}] > ').strip().lower()
 
             if cmd == '':
                 cmd = self.last_command
 
             if cmd in ['step', 's']:
                 self.last_command = 'step'
+                stepped = True
                 break
             elif cmd == 'back':
                 print('Restarting program...', end='')
@@ -52,6 +56,7 @@ class MyDebugger:
                 sys.settrace(None)
                 new_env = os.environ.copy()
                 new_env['DEBUGGER_AUTO_STEP'] = '10'
+                new_env['DEBUGGER_STEP_COUNT'] = '0'
                 os.execve(sys.executable, [sys.executable] + sys.argv, new_env)
             elif cmd == 'quit':
                 self.last_command = 'quit'
@@ -59,6 +64,8 @@ class MyDebugger:
                 sys.exit(0)
             else:
                 self.print_message_at_bottom('Unknown command. Type step, back or quit.')
+            if stepped:
+                self.step_count += 1
         return self.trace_calls
 
     def get_line(self, lineno):
