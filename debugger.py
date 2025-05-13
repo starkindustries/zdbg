@@ -11,7 +11,7 @@ class MyDebugger:
     def __init__(self, filename):
         self.filename = filename
         self._wait_for_input = True
-        self.last_command = None
+        self.last_command = os.environ.get('DEBUGGER_LAST_COMMAND', None)
         last_highlight_env = os.environ.get('DEBUGGER_LAST_HIGHLIGHT')
         self.last_highlight_lineno = int(last_highlight_env) if last_highlight_env is not None else None
         self.auto_step_count = int(os.environ.get('DEBUGGER_AUTO_STEP', '0'))
@@ -36,23 +36,23 @@ class MyDebugger:
         while True:
             self.render_file(lineno, frame.f_locals)
             self.last_highlight_lineno = lineno
-            stepped = False
+
             if self.auto_step_count > 0:
                 self.auto_step_count -= 1
-                self.last_command = 'step'
                 self.step_count += 1
                 break
             cmd = input(f'[step {self.step_count}] > ').strip().lower()
 
             if cmd == '':
                 cmd = self.last_command
+            else:
+                self.last_command = cmd
 
             if cmd in ['step', 's']:
-                self.last_command = 'step'
+                print("Stepping...", end='')
                 self.step_count += 1
                 break
             elif cmd in ['back', 'b']:
-                self.last_command = 'back'
                 print('Restarting program...', end='')
                 # Clear state and restart with auto-step
                 sys.settrace(None)
@@ -63,9 +63,9 @@ class MyDebugger:
                     new_env['DEBUGGER_LAST_HIGHLIGHT'] = str(self.last_highlight_lineno)
                 elif 'DEBUGGER_LAST_HIGHLIGHT' in new_env:
                     del new_env['DEBUGGER_LAST_HIGHLIGHT']
+                new_env['DEBUGGER_LAST_COMMAND'] = "back"
                 os.execve(sys.executable, [sys.executable] + sys.argv, new_env)
             elif cmd == 'quit':
-                self.last_command = 'quit'
                 print('Exiting debugger.')
                 sys.exit(0)
             else:
