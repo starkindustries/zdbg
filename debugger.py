@@ -39,7 +39,7 @@ class MyDebugger:
             if self.auto_step_count > 0:
                 self.auto_step_count -= 1
                 self.last_command = 'step'
-                stepped = True
+                self.step_count += 1
                 break
             cmd = input(f'[step {self.step_count}] > ').strip().lower()
 
@@ -48,14 +48,14 @@ class MyDebugger:
 
             if cmd in ['step', 's']:
                 self.last_command = 'step'
-                stepped = True
+                self.step_count += 1
                 break
             elif cmd == 'back':
                 print('Restarting program...', end='')
                 # Clear state and restart with auto-step
                 sys.settrace(None)
                 new_env = os.environ.copy()
-                new_env['DEBUGGER_AUTO_STEP'] = '10'
+                new_env['DEBUGGER_AUTO_STEP'] = str(max(self.step_count - 1, 0))
                 new_env['DEBUGGER_STEP_COUNT'] = '0'
                 os.execve(sys.executable, [sys.executable] + sys.argv, new_env)
             elif cmd == 'quit':
@@ -64,8 +64,6 @@ class MyDebugger:
                 sys.exit(0)
             else:
                 self.print_message_at_bottom('Unknown command. Type step, back or quit.')
-            if stepped:
-                self.step_count += 1
         return self.trace_calls
 
     def get_line(self, lineno):
