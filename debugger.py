@@ -44,6 +44,27 @@ class MyDebugger:
         # Move cursor back to the start and print the message
         print(f"\033[{height};1H{message}", end="", flush=True)
 
+    def auto_trace_calls(self, frame, event, arg):
+        if event != 'line':
+            return self.auto_trace_calls
+        if frame.f_code.co_filename != self.filename:
+            return self.auto_trace_calls
+        if self.auto_step_count > 0:
+            self.auto_step_count -= 1
+            self.step_count += 1
+            return self.auto_trace_calls
+        return self.trace_calls
+
+    def setup_new_env(self):
+        new_env = os.environ.copy()
+        new_env['DEBUGGER_AUTO_STEP'] = str(max(self.step_count - 1, 0))
+        new_env['DEBUGGER_STEP_COUNT'] = '0'
+        new_env['DEBUGGER_LAST_COMMAND'] = "back"
+        new_env.pop('DEBUGGER_LAST_HIGHLIGHT', None)
+        if self.last_highlight_lineno is not None:
+            new_env['DEBUGGER_LAST_HIGHLIGHT'] = str(self.last_highlight_lineno)
+        return new_env
+
     def trace_calls(self, frame, event, arg):
         if event != 'line':
             return self.trace_calls
@@ -51,13 +72,11 @@ class MyDebugger:
             return self.trace_calls
         lineno = frame.f_lineno
         while True:
+            assert self.auto_step_count == 0, "Error: should not be in auto-step mode in this function"
+
             self.render(lineno, frame.f_locals)
             self.last_highlight_lineno = lineno
 
-            if self.auto_step_count > 0:
-                self.auto_step_count -= 1
-                self.step_count += 1
-                break
             cmd = input(f'[step {self.step_count}] > {CLEAR_LINE}').strip().lower()
 
             if cmd == '':
@@ -68,26 +87,18 @@ class MyDebugger:
             if cmd in ['step', 's']:
                 print("Stepping...", end='')
                 self.step_count += 1
-                break
+                return self.trace_calls
             elif cmd in ['back', 'b']:
                 print('Restarting program...', end='')
                 # Clear state and restart with auto-step
                 sys.settrace(None)
-                new_env = os.environ.copy()
-                new_env['DEBUGGER_AUTO_STEP'] = str(max(self.step_count - 1, 0))
-                new_env['DEBUGGER_STEP_COUNT'] = '0'
-                if self.last_highlight_lineno is not None:
-                    new_env['DEBUGGER_LAST_HIGHLIGHT'] = str(self.last_highlight_lineno)
-                elif 'DEBUGGER_LAST_HIGHLIGHT' in new_env:
-                    del new_env['DEBUGGER_LAST_HIGHLIGHT']
-                new_env['DEBUGGER_LAST_COMMAND'] = "back"
+                new_env = self.setup_new_env()
                 os.execve(sys.executable, [sys.executable] + sys.argv, new_env)
             elif cmd == 'quit':
                 print('Exiting debugger.')
                 sys.exit(0)
             else:
                 self.print_message_at_bottom('Unknown command. Type step, back or quit.')
-        return self.trace_calls
 
     def get_line(self, lineno):
         with open(self.filename) as f:
@@ -97,7 +108,10 @@ class MyDebugger:
     def run(self):
         with open(self.filename) as f:
             code = f.read()
-        sys.settrace(self.trace_calls)
+        if self.auto_step_count > 0:
+            sys.settrace(self.auto_trace_calls)
+        else:
+            sys.settrace(self.trace_calls)
         globals_dict = {'__name__': '__main__'}
         exec(compile(code, self.filename, 'exec'), globals_dict)
         sys.settrace(None)
