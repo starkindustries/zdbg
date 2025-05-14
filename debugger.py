@@ -44,17 +44,6 @@ class MyDebugger:
         # Move cursor back to the start and print the message
         print(f"\033[{height};1H{message}", end="", flush=True)
 
-    def auto_trace_calls(self, frame, event, arg):
-        if event != 'line':
-            return self.auto_trace_calls
-        if frame.f_code.co_filename != self.filename:
-            return self.auto_trace_calls
-        if self.auto_step_count > 0:
-            self.auto_step_count -= 1
-            self.step_count += 1
-            return self.auto_trace_calls
-        return self.trace_calls
-
     def setup_new_env(self):
         new_env = os.environ.copy()
         new_env['DEBUGGER_AUTO_STEP'] = str(max(self.step_count - 1, 0))
@@ -70,12 +59,18 @@ class MyDebugger:
             return self.trace_calls
         if frame.f_code.co_filename != self.filename:
             return self.trace_calls
-        lineno = frame.f_lineno
+
+        # If auto-stepping, step once and return
+        if self.auto_step_count > 0:
+            self.auto_step_count -= 1
+            self.step_count += 1
+            return self.trace_calls
+
         while True:
             assert self.auto_step_count == 0, "Error: should not be in auto-step mode in this function"
 
-            self.render(lineno, frame.f_locals)
-            self.last_highlight_lineno = lineno
+            self.render(frame.f_lineno, frame.f_locals)
+            self.last_highlight_lineno = frame.f_lineno
 
             cmd = input(f'[step {self.step_count}] > {CLEAR_LINE}').strip().lower()
 
@@ -108,10 +103,7 @@ class MyDebugger:
     def run(self):
         with open(self.filename) as f:
             code = f.read()
-        if self.auto_step_count > 0:
-            sys.settrace(self.auto_trace_calls)
-        else:
-            sys.settrace(self.trace_calls)
+        sys.settrace(self.trace_calls)
         globals_dict = {'__name__': '__main__'}
         exec(compile(code, self.filename, 'exec'), globals_dict)
         sys.settrace(None)
@@ -166,7 +158,7 @@ class MyDebugger:
                     var_lines += 1
 
         # Fill any remaining space with blank lines so the prompt is always at the bottom
-        for _ in range((height - len(lines)) - var_lines - 2):
+        for _ in range(height - len(lines) - var_lines - 2):
             print()
         print(SHOW_CURSOR, end="", flush=True)
 
