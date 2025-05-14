@@ -26,23 +26,11 @@ class MyDebugger:
             self.lines = [line.rstrip('\n') for line in f.readlines()]
     
     def get_terminal_size(self):
-        # Get terminal size
-        try:
-            size = os.get_terminal_size()
-            height, width = size.lines, size.columns
-        except OSError:
-            height, width = 24, 80
-        return height, width
-
-    def print_message_at_bottom(self, message):
         size = os.get_terminal_size()
-        height, width = size.lines, size.columns
-        # Move cursor to the last line
-        print(f"\033[{height};1H", end="")
-        # Clear the line
-        print(" " * width, end="")
-        # Move cursor back to the start and print the message
-        print(f"\033[{height};1H{message}", end="", flush=True)
+        return size.lines, size.columns
+
+    def print_cmd_message(self, message):
+        print(f"\033[{self.height};1H{message}{CLEAR_LINE}", end="", flush=True)
 
     def setup_new_env(self):
         new_env = os.environ.copy()
@@ -80,20 +68,20 @@ class MyDebugger:
                 self.last_command = cmd
 
             if cmd in ['step', 's']:
-                print("Stepping...", end='')
+                self.print_cmd_message("Stepping..")
                 self.step_count += 1
                 return self.trace_calls
             elif cmd in ['back', 'b']:
-                print('Restarting program...', end='')
+                self.print_cmd_message('Restarting program..')
                 # Clear state and restart with auto-step
                 sys.settrace(None)
                 new_env = self.setup_new_env()
                 os.execve(sys.executable, [sys.executable] + sys.argv, new_env)
             elif cmd == 'quit':
-                print('Exiting debugger.')
+                self.print_cmd_message('Exiting debugger.')
                 sys.exit(0)
             else:
-                self.print_message_at_bottom('Unknown command. Type step, back or quit.')
+                self.print_cmd_message('Unknown command. Type [s]tep, [b]ack or quit.')
 
     def get_line(self, lineno):
         with open(self.filename) as f:
